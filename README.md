@@ -5,5 +5,4 @@
 ## 变更概览
 - **iptables → nftables**：使用 fw4 include 注入 `/var/etc/adguardhome.nft`。
 - 模板：`/usr/share/AdGuardHome/adguardhome.nft.tpl`（默认仅 `prerouting`；如需本机 DNS 也强制走 AGH，可自行加 `output` 并做好白名单）。
-- 清理：`clear_nft_redirect` 会删 include + `fw4 reload` + `nft delete table inet adguardhome`，避免规则叠加。
 - 模式语义保持：`redirect` / `dnsmasq-upstream` / `exchange` 与原版一致。
