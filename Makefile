@@ -21,7 +21,7 @@ define Package/luci-app-adguardhome
 	TITLE:=LuCI app for adguardhome
 	PKG_MAINTAINER:=<https://github.com/rufengsuixing/luci-app-adguardhome>
 	PKGARCH:=all
-	DEPENDS:=+coreutils-base64 +wget-ssl +tar +xz-utils
+	DEPENDS:=+wget-ssl +tar +xz-utils
 endef
 
 define Package/luci-app-adguardhome/description
