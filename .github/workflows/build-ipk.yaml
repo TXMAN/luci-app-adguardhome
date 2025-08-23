@@ -1,0 +1,100 @@
+name: build-ipk (OpenWrt 24.10.2 x86_64)
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: read
+
+env:
+  SDK_URL: https://downloads.openwrt.org/releases/24.10.2/targets/x86/64/openwrt-sdk-24.10.2-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.xz
+  PKG_DIR_NAME: luci-app-adguardhome
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential gawk unzip file libncurses5-dev \
+            zlib1g-dev libssl-dev wget python3 git rsync time
+
+      - name: Download OpenWrt SDK
+        run: |
+          echo "SDK_URL = $SDK_URL"
+          mkdir -p "$GITHUB_WORKSPACE/_sdk"
+          cd "$GITHUB_WORKSPACE/_sdk"
+          wget -q "$SDK_URL" -O sdk.tar.xz
+          tar -xf sdk.tar.xz
+          SDK_DIR="$(find . -maxdepth 1 -type d -name 'openwrt-sdk-*' | head -n1)"
+          echo "SDK_DIR=$GITHUB_WORKSPACE/_sdk/$SDK_DIR" >> $GITHUB_ENV
+
+      - name: Inject PKG_RELEASE from tag
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "Using tag: $TAG"
+          if grep -qE '^PKG_RELEASE:=' Makefile; then
+            sed -i "s/^PKG_RELEASE:=.*/PKG_RELEASE:=${TAG}/" Makefile
+          else
+            echo "PKG_RELEASE:=${TAG}" >> Makefile
+          fi
+          echo "== Makefile (snippet) =="
+          grep -E '^(PKG_NAME|PKG_VERSION|PKG_RELEASE)[:]?=' Makefile || true
+
+      - name: Prepare package tree inside SDK
+        run: |
+          set -eux
+          cd "$SDK_DIR"
+          cat > feeds.conf.default << 'EOF'
+          src-git packages https://git.openwrt.org/feed/packages.git;openwrt-24.10
+          src-git luci https://git.openwrt.org/project/luci.git;openwrt-24.10
+          src-git routing https://git.openwrt.org/feed/routing.git;openwrt-24.10
+          src-git telephony https://git.openwrt.org/feed/telephony.git;openwrt-24.10
+          EOF
+
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+          mkdir -p package/${PKG_DIR_NAME}
+          rsync -a --delete "$GITHUB_WORKSPACE/" "package/${PKG_DIR_NAME}/" \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '_sdk'
+
+      - name: Defconfig
+        run: |
+          cd "$SDK_DIR"
+          make defconfig
+
+      - name: Build package
+        run: |
+          cd "$SDK_DIR"
+          make package/${PKG_DIR_NAME}/compile -j$(nproc) V=s
+
+      - name: Collect IPKs
+        run: |
+          cd "$SDK_DIR"
+          mkdir -p "$GITHUB_WORKSPACE/out"
+          find bin/packages -type f -name "*${PKG_DIR_NAME}*ipk" -print -exec cp -f {} "$GITHUB_WORKSPACE/out/" \;
+          find bin/packages -maxdepth 3 -type f -name 'Packages*' -exec cp -f {} "$GITHUB_WORKSPACE/out/" \;
+
+          cd "$GITHUB_WORKSPACE/out"
+          sha256sum *.ipk > SHA256SUMS.txt || true
+          ls -l
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipks-${{ github.ref_name }}-x86_64
+          path: out/
+          if-no-files-found: error
