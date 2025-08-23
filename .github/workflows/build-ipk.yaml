@@ -32,7 +32,8 @@ jobs:
                               unzip zlib1g-dev file wget libelf-dev ecj \
                               fastjar java-propose-classpath libncurses5-dev \
                               python3-setuptools rsync subversion \
-                              swig time xsltproc zip upx-ucl jq
+                              swig time xsltproc zip upx-ucl jq \
+                              curl zstd
 
       - name: 下载并解压 OpenWrt SDK
         run: |
