@@ -9,7 +9,9 @@ permissions:
   contents: read
 
 env:
-  SDK_URL: https://downloads.openwrt.org/releases/24.10.2/targets/x86/64/openwrt-sdk-24.10.2-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.xz
+  RELEASE: 24.10.2
+  TARGET: x86
+  SUBTARGET: 64
   PKG_DIR_NAME: luci-app-adguardhome
 
 jobs:
@@ -30,14 +32,25 @@ jobs:
             zlib1g-dev libssl-dev wget python3 git rsync time
 
       - name: Download OpenWrt SDK
-        run: |
-          echo "SDK_URL = $SDK_URL"
-          mkdir -p "$GITHUB_WORKSPACE/_sdk"
-          cd "$GITHUB_WORKSPACE/_sdk"
-          wget -q "$SDK_URL" -O sdk.tar.xz
-          tar -xf sdk.tar.xz
-          SDK_DIR="$(find . -maxdepth 1 -type d -name 'openwrt-sdk-*' | head -n1)"
-          echo "SDK_DIR=$GITHUB_WORKSPACE/_sdk/$SDK_DIR" >> $GITHUB_ENV
+  run: |
+    set -e
+    BASE="https://downloads.openwrt.org/releases/${RELEASE}/targets/${TARGET}/${SUBTARGET}/"
+    echo "BASE = $BASE"
+
+    SDK_TARBALL="$(curl -fsSL "$BASE" | grep -o 'openwrt-sdk-[^"]*\.tar\.xz' | head -n1 || true)"
+    if [ -z "$SDK_TARBALL" ]; then
+      echo "ERROR: could not find SDK tarball under $BASE"
+      exit 1
+    fi
+    SDK_URL="${BASE}${SDK_TARBALL}"
+    echo "Resolved SDK_URL = $SDK_URL"
+
+    mkdir -p "$GITHUB_WORKSPACE/_sdk"
+    cd "$GITHUB_WORKSPACE/_sdk"
+    wget -q "$SDK_URL" -O sdk.tar.xz
+    tar -xf sdk.tar.xz
+    SDK_DIR="$(find . -maxdepth 1 -type d -name 'openwrt-sdk-*' | head -n1)"
+    echo "SDK_DIR=$GITHUB_WORKSPACE/_sdk/$SDK_DIR" >> $GITHUB_ENV
 
       - name: Inject PKG_RELEASE from tag
         run: |
