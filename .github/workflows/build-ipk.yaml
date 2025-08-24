@@ -46,7 +46,9 @@ jobs:
           mkdir -p _sdk
           wget -q "${BASE}${SDK_TARBALL}" -O _sdk/sdk.tar.zst
           tar --zstd -xf _sdk/sdk.tar.zst -C _sdk
-          echo "SDK_DIR=$PWD/_sdk/$(ls -d _sdk/openwrt-sdk-* | head -n1)" >> "$GITHUB_ENV"
+          SDK_DIR="$(find "$PWD/_sdk" -maxdepth 1 -type d -name 'openwrt-sdk-*' -print -quit)"
+          echo "SDK_DIR=${SDK_DIR}" >> "$GITHUB_ENV"
+          echo "Resolved SDK_DIR=${SDK_DIR}"
 
       - name: 将包拷入 SDK
         run: |
