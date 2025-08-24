@@ -95,4 +95,3 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: |
             out/*.ipk
-            out/SHA256SUMS.txt
