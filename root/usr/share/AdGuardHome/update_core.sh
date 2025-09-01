@@ -88,7 +88,7 @@ UPX_Compress(){
 	else
 		echo -e "\n${upx_name} 下载成功!\n" 
 	fi
-	which xz > /dev/null 2>&1 || (opkg list | grep ^xz || opkg update > /dev/null 2>&1 && opkg install xz --force-depends) || (echo "软件包 xz 安装失败!" && EXIT 1)
+	which xz > /dev/null 2>&1 || (apk info | grep ^xz || apk update > /dev/null 2>&1 && apk add xz -f) || (echo "软件包 xz 安装失败!" && EXIT 1)
 	mkdir -p /tmp/upx-${upx_latest_ver}-${Arch_upx}_linux
 	echo -e "正在解压 ${upx_name} ...\n" 
 	xz -d -c /tmp/upx-${upx_latest_ver}-${Arch_upx}_linux.tar.xz | tar -x -C "/tmp"
@@ -151,7 +151,7 @@ Update_Core(){
 }
 
 GET_Arch() {
-	Archt="$(opkg info kernel | grep Architecture | awk -F "[ _]" '{print($2)}')"
+	Archt="$(uname -m)"
 	case "${Archt}" in
 	i386)
 		Arch=i386
